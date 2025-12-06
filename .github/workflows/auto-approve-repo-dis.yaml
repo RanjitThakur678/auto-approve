@@ -1,4 +1,4 @@
-name: Auto Approval
+name: Auto Approval by Repo dispatch
 
 on:
   repository_dispatch:
