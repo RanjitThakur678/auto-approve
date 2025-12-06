@@ -20,5 +20,6 @@ jobs:
               prd
             actor_allow_list: |
               RanjitThakur678
+              approverauto
 
   
