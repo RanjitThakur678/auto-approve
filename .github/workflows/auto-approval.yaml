@@ -7,18 +7,18 @@ name: Auto Approval
 on: [deployment, workflow_dispatch]
 
 jobs:
-  auto_approve:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Auto Approve Deploys
-        # you can use any @vN.N.N tag from https://github.com/activescott/automate-environment-deployment-approval/releases
-        uses: activescott/automate-environment-deployment-approval@main
-        with:
-          github_token: ${{ secrets.WORKFLOW_APPROVAL }}
-          environment_allow_list: |
-            stg
-            prd
-          # the below automatically approves dependabot and anything submitted by the Github user with login "activescott"
-          actor_allow_list: |
-            RanjitThakur678
-            approverauto
+    auto_approve:
+      runs-on: ubuntu-latest
+      if: github.actor == 'approverauto'
+      steps:
+        - name: Auto Approve Deploys
+          uses: activescott/automate-environment-deployment-approval@main
+          with:
+            github_token: ${{ secrets.WORKFLOW_APPROVAL }}
+            environment_allow_list: |
+              stg
+              prd
+            actor_allow_list: |
+              RanjitThakur678
+              approverauto
+  
