@@ -73,7 +73,7 @@ jobs:
               "actor": "${{ github.actor }}",
               "environment": "${{ steps.env.outputs.environment }}",
               "workflow_name": "${{ github.workflow }}",
-              "branch": "${{ github.ref_name }}",
+              "branch": "${{ github.ref_name }}"
             }
 
 
