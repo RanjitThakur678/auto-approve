@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Deployment
 
 on:
   push:
@@ -27,6 +27,8 @@ jobs:
   build:
     name: Build Stage
     runs-on: ubuntu-latest
+    outputs:
+      target_env: ${{ steps.env.outputs.environment }}
 
     steps:
       - uses: actions/checkout@v4
@@ -51,18 +53,25 @@ jobs:
             dist/
             build/
 
-      - name: Invoke Auto-Approval for Protected Envs
+      - name: Generate GitHub App Token
+        uses: tibdex/github-app-token@v2
+        id: app_token
+        with:
+          app_id: ${{ secrets.WORKFLOW_AUTO_APPROVE_APP_ID }}
+          private_key: ${{ secrets.WORKFLOW_AUTO_APPROVE_SECRET }}
+
+      - name: Trigger Auto-Approval via Repository Dispatch
         if: ${{ steps.env.outputs.environment != 'dev' }}
         run: |
-          echo "Triggering auto-approval workflow via repository dispatch..."
+          TOKEN=${{ steps.app_token.outputs.token }}
           curl -X POST \
             -H "Accept: application/vnd.github+json" \
-            -H "Authorization: token ${{ secrets.REPO_DISPATCH_TOKEN }}" \
+            -H "Authorization: Bearer $TOKEN" \
             https://api.github.com/repos/${{ github.repository }}/dispatches \
             -d '{
                   "event_type": "auto-approve",
                   "client_payload": {
-                    "workflow_name": "Deployment",
+                    "workflow_name": "Build and Deploy",
                     "actor": "'"${{ github.actor }}"'",
                     "branch": "'"${{ github.ref_name }}"'",
                     "environment": "'"${{ steps.env.outputs.environment }}"'"
@@ -73,9 +82,8 @@ jobs:
     name: Deployment Stage
     needs: build
     runs-on: ubuntu-latest
-    
-    environment: ${{ steps.env.outputs.environment }}
-    
+    environment: ${{ needs.build.outputs.target_env }}
+
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -83,8 +91,8 @@ jobs:
 
       - name: Deploy Application
         run: |
-          echo "Deploying to ${{ steps.env.outputs.environment }}"
-          # deployment commands
+          echo "Deploying to environment: ${{ needs.build.outputs.target_env }}"
+          # your deployment commands
 
       - name: Deployment Complete
         run: echo "Deployment completed."
