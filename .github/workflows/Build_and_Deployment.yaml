@@ -1,0 +1,67 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - feat/auto-approve
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Choose environment to deploy"
+        required: true
+        type: choice
+        options:
+          - dev
+          - stg
+          - prd
+    
+
+permissions:       # <── GLOBAL SCOPE
+  contents: read
+  deployments: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build Stage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Build
+        run: |
+          echo "Running build for environment: ${{ github.event.inputs.environment }}"
+          npm install
+          npm run build
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifact
+          path: |
+            dist/
+            build/
+
+  deploy:
+    name: Deployment Stage
+    needs: build
+    runs-on: ubuntu-latest
+    
+    environment: ${{ github.event.inputs.environment }}
+    # GitHub will enforce environment protections here.
+    
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifact
+
+      - name: Deploy Application
+        run: |
+          echo "Deploying to environment: ${{ github.event.inputs.environment }}"
+          # deployment commands
+
+      - name: Deployment Complete
+        run: echo "Deployment completed."

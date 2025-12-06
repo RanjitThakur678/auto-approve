@@ -1,0 +1,20 @@
+{
+    "name": "auto-approve",
+    "version": "1.0.0",
+    "description": "Sample Node.js project for GitHub Actions auto-approve workflow",
+    "main": "src/index.js",
+    "scripts": {
+      "start": "node src/index.js",
+      "build": "mkdir -p dist && cp -r src/* dist/",
+      "test": "echo \"No tests configured\""
+    },
+    "author": "dev 007",
+    "license": "ISC",
+    "dependencies": {
+      "express": "^4.18.2"
+    },
+    "devDependencies": {}
+  }
+  
+  
+  
