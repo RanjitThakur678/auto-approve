@@ -9,7 +9,7 @@ on: [deployment, workflow_dispatch]
 jobs:
     auto_approve:
       runs-on: ubuntu-latest
-      if: github.actor == 'approverauto'
+      if: github.actor == 'approverauto' ##github bot for our case which is not the part of reviewer team 
       steps:
         - name: Auto Approve Deploys
           uses: activescott/automate-environment-deployment-approval@main
@@ -20,5 +20,5 @@ jobs:
               prd
             actor_allow_list: |
               RanjitThakur678
-              approverauto
+
   
