@@ -58,8 +58,8 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/pending_deployments)
 
-          # Extract numeric environment IDs safely (convert to pure integers)
-          ENV_IDS=$(echo "$pending" | jq -r '.[]?.environment.id | tonumber')
+          # Extract environment IDs as clean integers
+          ENV_IDS=$(echo "$pending" | jq -r '.[]?.environment.id')
 
           if [[ -z "$ENV_IDS" ]]; then
             echo "❌ No pending environment approvals found."
@@ -70,22 +70,24 @@ jobs:
           echo "Pending environment IDs:"
           echo "$ENV_IDS"
 
+          # Convert IDs to proper JSON array: [12345, 67890]
+          JSON_IDS=$(echo "$ENV_IDS" | jq -R . | jq -s 'map(tonumber)')
+
+          echo "Final JSON payload environment_ids = $JSON_IDS"
+
           echo "Approving deployment..."
 
-          # Build GH CLI POST command safely
-          CMD=(gh api --method POST
-            -H "Accept: application/vnd.github+json"
-            /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/pending_deployments
-            -f state=approved
-            -f comment="Auto approved by workflow"
-          )
-
-          # Append each integer environment ID without quotes
-          for id in $ENV_IDS; do
-            CMD+=(-f "environment_ids[]=$id")
-          done
-
-          # Execute final command
-          "${CMD[@]}"
+          # Send clean JSON (no broken gh -f parsing)
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/pending_deployments \
+            --input - <<EOF
+{
+  "state": "approved",
+  "comment": "Auto approved by workflow",
+  "environment_ids": $JSON_IDS
+}
+EOF
 
           echo "🎉 Deployment approved successfully!"
