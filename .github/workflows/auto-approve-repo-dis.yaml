@@ -1,4 +1,4 @@
-name: Auto Approval by Repo dispatch with app
+name: Auto Approval by Repo dispatch
 
 on:
   repository_dispatch:
@@ -6,7 +6,6 @@ on:
 
 permissions:
   deployments: write
-  actions: write
   contents: read
 
 jobs:
@@ -24,17 +23,9 @@ jobs:
       - name: Install GH CLI
         run: sudo apt-get update && sudo apt-get install -y gh jq
 
-      - name: Github Token creation
-        uses: actions/create-github-app-token@v2
-        id: app-token
-        with:
-          # required
-          app-id: ${{ secrets.WORKFLOW_AUTO_APPROVE_APP_ID }}
-          private-key: ${{ secrets.WORKFLOW_AUTO_APPROVE_SECRET }}
-
       - name: Wait for run to reach approval state
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ secrets.WORKFLOW_APPROVAL }}
         run: |
           RUN_ID="${{ github.event.client_payload.run_id }}"
           echo "Checking run: $RUN_ID"
@@ -57,7 +48,7 @@ jobs:
 
       - name: Approve Deployment
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ secrets.WORKFLOW_APPROVAL }}
         run: |
           RUN_ID="${{ github.event.client_payload.run_id }}"
 
