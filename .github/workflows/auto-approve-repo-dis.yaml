@@ -1,87 +1,57 @@
-name: Auto Approval by Repo dispatch
+name: Auto-Approval
 
 on:
   repository_dispatch:
     types: [auto-approve]
 
 permissions:
-  contents: read
   deployments: write
-  actions: read
-  id-token: write
+  contents: read
 
 jobs:
-  auto-approve:
+  approve:
     runs-on: ubuntu-latest
 
     steps:
-      # -----------------------
-      # 1. Validate actor
-      # -----------------------
-      - name: Check Actor
+      - name: Validate Actor
         run: |
-          PAYLOAD_ACTOR="${{ github.event.client_payload.actor }}"
-          if [[ "$PAYLOAD_ACTOR" != "approverauto" ]]; then
-            echo "❌ Actor $PAYLOAD_ACTOR is not allowed to auto-approve."
+          if [[ "${{ github.event.client_payload.actor }}" != "approverauto" ]]; then
+            echo "Actor not allowed"
             exit 1
           fi
-          echo "✅ Actor validated: $PAYLOAD_ACTOR"
 
-      # -----------------------
-      # 2. Prepare variables
-      # -----------------------
-      - name: Prepare Variables
-        id: prep
-        run: |
-          echo "RUN_ID=${{ github.event.client_payload.run_id }}" >> $GITHUB_ENV
-          echo "ENVIRONMENT=${{ github.event.client_payload.environment }}" >> $GITHUB_ENV
-          echo "BRANCH=${{ github.event.client_payload.branch }}" >> $GITHUB_ENV
-          echo "WORKFLOW_NAME=${{ github.event.client_payload.workflow_name }}" >> $GITHUB_ENV
-
-      # -----------------------
-      # 3. Install & authenticate gh
-      # -----------------------
-      - name: Install GitHub CLI
+      - name: Install GH CLI
         run: sudo apt-get update && sudo apt-get install -y gh jq
 
-      - name: Authenticate GH CLI
+      - name: Authenticate
         env:
           GH_TOKEN: ${{ secrets.WORKFLOW_APPROVAL }}
-        run: |
-          echo "$GH_TOKEN" | gh auth login --with-token
+        run: echo "$GH_TOKEN" | gh auth login --with-token
 
-      # -----------------------
-      # 4. Wait for run to reach "waiting" state
-      # -----------------------
-      - name: Wait for run to be in waiting state
+      - name: Wait for run to reach approval state
         env:
           GH_TOKEN: ${{ secrets.WORKFLOW_APPROVAL }}
         run: |
-          echo "⏳ Waiting for run $RUN_ID to reach 'waiting' approval state..."
+          RUN_ID="${{ github.event.client_payload.run_id }}"
+          echo "Checking run: $RUN_ID"
+
           for i in {1..30}; do
-            STATUS=$(gh api \
-              -H "Accept: application/vnd.github+json" \
-              /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID} \
-              -q '.status' 2>/dev/null || echo "unknown")
-
-            echo "Attempt $i → Status: $STATUS"
+            STATUS=$(gh api /repos/${GITHUB_REPOSITORY}/actions/runs/$RUN_ID -q '.status')
 
             if [[ "$STATUS" == "waiting" ]]; then
-              echo "✅ Run is waiting for approval!"
+              echo "Run is waiting for approval!"
               break
             fi
 
+            echo "Run status: $STATUS (waiting...)"
             sleep 5
           done
 
-      # -----------------------
-      # 5. Approve environment gate
-      # -----------------------
       - name: Approve Deployment
         env:
           GH_TOKEN: ${{ secrets.WORKFLOW_APPROVAL }}
         run: |
-          echo "🚀 Approving deployment for run $RUN_ID..."
+          RUN_ID="${{ github.event.client_payload.run_id }}"
 
           gh api \
             -X POST \
@@ -89,4 +59,4 @@ jobs:
             /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/pending_deployments \
             -f state=approved
 
-          echo "🎉 Deployment auto-approved successfully!"
+          echo "Approved run $RUN_ID successfully!"
