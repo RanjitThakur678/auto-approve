@@ -1,0 +1,90 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - feat/auto-approve
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Choose environment to deploy"
+        required: true
+        type: choice
+        options:
+          - dev
+          - stg
+          - prd
+
+permissions:       
+  contents: read
+  deployments: write
+  id-token: write
+
+env:
+  DEFAULT_ENV: dev
+
+jobs:
+  build:
+    name: Build Stage
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine Environment
+        id: env
+        run: |
+          ENV="${{ github.event.inputs.environment || env.DEFAULT_ENV }}"
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+
+      - name: Run Build
+        run: |
+          echo "Building for environment: ${{ steps.env.outputs.environment }}"
+          npm install
+          npm run build
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifact
+          path: |
+            dist/
+            build/
+
+      - name: Invoke Auto-Approval for Protected Envs
+        if: ${{ steps.env.outputs.environment != 'dev' }}
+        run: |
+          echo "Triggering auto-approval workflow via repository dispatch..."
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: token ${{ secrets.REPO_DISPATCH_TOKEN }}" \
+            https://api.github.com/repos/${{ github.repository }}/dispatches \
+            -d '{
+                  "event_type": "auto-approve",
+                  "client_payload": {
+                    "workflow_name": "Deployment",
+                    "actor": "'"${{ github.actor }}"'",
+                    "branch": "'"${{ github.ref_name }}"'",
+                    "environment": "'"${{ steps.env.outputs.environment }}"'"
+                  }
+                }'
+
+  deploy:
+    name: Deployment Stage
+    needs: build
+    runs-on: ubuntu-latest
+    
+    environment: ${{ steps.env.outputs.environment }}
+    
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-artifact
+
+      - name: Deploy Application
+        run: |
+          echo "Deploying to ${{ steps.env.outputs.environment }}"
+          # deployment commands
+
+      - name: Deployment Complete
+        run: echo "Deployment completed."
