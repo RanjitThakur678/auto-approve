@@ -63,7 +63,7 @@ jobs:
       - name: Trigger Auto-Approval via Repository Dispatch
         if: ${{ steps.env.outputs.environment != 'dev' }}
         run: |
-          TOKEN=${{ steps.app_token.outputs.token }}
+          TOKEN=${{ secrets.WORKFLOW_APPROVAL }}
           curl -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $TOKEN" \
