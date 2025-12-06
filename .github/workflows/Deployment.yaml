@@ -66,6 +66,7 @@ jobs:
         with:
           token: ${{ secrets.WORKFLOW_APPROVAL }}
           event-type: auto-approve
+          repository: RanjitThakur678/auto-approve
           client-payload: |
             {
               "run_id": "${{ github.run_id }}",
