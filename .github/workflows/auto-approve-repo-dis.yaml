@@ -54,30 +54,38 @@ jobs:
 
           echo "Fetching pending deployments for run $RUN_ID..."
 
-          # fetch pending deployments
           pending=$(gh api \
             -H "Accept: application/vnd.github+json" \
             /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/pending_deployments)
 
-          # extract environment IDs
-          ENV_IDS=$(echo "$pending" | jq -r '.[].environment.id')
+          # Extract numeric environment IDs safely (convert to pure integers)
+          ENV_IDS=$(echo "$pending" | jq -r '.[]?.environment.id | tonumber')
 
           if [[ -z "$ENV_IDS" ]]; then
-            echo "No pending environment approvals found. Exiting."
+            echo "❌ No pending environment approvals found."
             echo "$pending"
             exit 1
           fi
 
-          echo "Pending environment IDs: $ENV_IDS"
+          echo "Pending environment IDs:"
+          echo "$ENV_IDS"
 
           echo "Approving deployment..."
 
-          gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/pending_deployments \
-            -f state=approved \
-            -f comment="Auto approved by workflow" \
-            $(for id in $ENV_IDS; do echo "-f environment_ids[]=$id"; done)
+          # Build GH CLI POST command safely
+          CMD=(gh api --method POST
+            -H "Accept: application/vnd.github+json"
+            /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/pending_deployments
+            -f state=approved
+            -f comment="Auto approved by workflow"
+          )
+
+          # Append each integer environment ID without quotes
+          for id in $ENV_IDS; do
+            CMD+=(-f "environment_ids[]=$id")
+          done
+
+          # Execute final command
+          "${CMD[@]}"
 
           echo "🎉 Deployment approved successfully!"
