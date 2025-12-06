@@ -1,0 +1,24 @@
+# using triggers for every deployment and allowed manually
+# docs on these triggers:
+# https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#deployment
+# https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_dispatch
+name: Auto Approval
+
+on: [deployment, workflow_dispatch]
+
+jobs:
+  auto_approve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto Approve Deploys
+        # you can use any @vN.N.N tag from https://github.com/activescott/automate-environment-deployment-approval/releases
+        uses: activescott/automate-environment-deployment-approval@main
+        with:
+          github_token: ${{ secrets.WORKFLOW_APPROVAL }}
+          environment_allow_list: |
+            stg
+            prd
+          # the below automatically approves dependabot and anything submitted by the Github user with login "activescott"
+          actor_allow_list: |
+            RanjitThakur678
+            approverauto
