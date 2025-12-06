@@ -58,7 +58,6 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/pending_deployments)
 
-          # Extract environment IDs as clean integers
           ENV_IDS=$(echo "$pending" | jq -r '.[]?.environment.id')
 
           if [[ -z "$ENV_IDS" ]]; then
@@ -70,24 +69,18 @@ jobs:
           echo "Pending environment IDs:"
           echo "$ENV_IDS"
 
-          # Convert IDs to proper JSON array: [12345, 67890]
+          # Convert IDs to a JSON array of integers
           JSON_IDS=$(echo "$ENV_IDS" | jq -R . | jq -s 'map(tonumber)')
-
-          echo "Final JSON payload environment_ids = $JSON_IDS"
+          echo "JSON array to send: $JSON_IDS"
 
           echo "Approving deployment..."
 
-          # Send clean JSON (no broken gh -f parsing)
-          gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/pending_deployments \
-            --input - <<EOF
-{
-  "state": "approved",
-  "comment": "Auto approved by workflow",
-  "environment_ids": $JSON_IDS
-}
-EOF
+          # ✅ Use echo + pipe + --input - to expand $JSON_IDS safely
+          echo "{\"state\": \"approved\", \"comment\": \"Auto approved by workflow\", \"environment_ids\": $JSON_IDS}" | \
+            gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/pending_deployments \
+              --input -
 
           echo "🎉 Deployment approved successfully!"
