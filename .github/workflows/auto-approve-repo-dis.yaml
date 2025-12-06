@@ -51,12 +51,33 @@ jobs:
           GH_TOKEN: ${{ secrets.WORKFLOW_APPROVAL }}
         run: |
           RUN_ID="${{ github.event.client_payload.run_id }}"
-          echo "Approving run $RUN_ID..."
+
+          echo "Fetching pending deployments for run $RUN_ID..."
+
+          # fetch pending deployments
+          pending=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/pending_deployments)
+
+          # extract environment IDs
+          ENV_IDS=$(echo "$pending" | jq -r '.[].environment.id')
+
+          if [[ -z "$ENV_IDS" ]]; then
+            echo "No pending environment approvals found. Exiting."
+            echo "$pending"
+            exit 1
+          fi
+
+          echo "Pending environment IDs: $ENV_IDS"
+
+          echo "Approving deployment..."
 
           gh api \
-            -X POST \
+            --method POST \
             -H "Accept: application/vnd.github+json" \
             /repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/pending_deployments \
-            -f state=approved
+            -f state=approved \
+            -f comment="Auto approved by workflow" \
+            $(for id in $ENV_IDS; do echo "-f environment_ids[]=$id"; done)
 
-          echo "Approved run $RUN_ID successfully!"
+          echo "🎉 Deployment approved successfully!"
