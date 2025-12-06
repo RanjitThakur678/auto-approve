@@ -15,10 +15,10 @@ on:
           - stg
           - prd
 
-permissions:       
-  contents: read
-  deployments: write
-  id-token: write
+# permissions:       
+#   contents: read
+#   deployments: write
+#   id-token: write
 
 env:
   DEFAULT_ENV: dev
