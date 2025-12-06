@@ -1,4 +1,4 @@
-name: Auto-Approval
+name: Auto Approval by Repo dispatch
 
 on:
   repository_dispatch:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  approve:
+  auto-approve:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,11 +23,6 @@ jobs:
       - name: Install GH CLI
         run: sudo apt-get update && sudo apt-get install -y gh jq
 
-      - name: Authenticate
-        env:
-          GH_TOKEN: ${{ secrets.WORKFLOW_APPROVAL }}
-        run: echo "$GH_TOKEN" | gh auth login --with-token
-
       - name: Wait for run to reach approval state
         env:
           GH_TOKEN: ${{ secrets.WORKFLOW_APPROVAL }}
@@ -36,7 +31,11 @@ jobs:
           echo "Checking run: $RUN_ID"
 
           for i in {1..30}; do
-            STATUS=$(gh api /repos/${GITHUB_REPOSITORY}/actions/runs/$RUN_ID -q '.status')
+            STATUS=$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              /repos/${GITHUB_REPOSITORY}/actions/runs/$RUN_ID \
+              -q '.status'
+            )
 
             if [[ "$STATUS" == "waiting" ]]; then
               echo "Run is waiting for approval!"
@@ -52,6 +51,7 @@ jobs:
           GH_TOKEN: ${{ secrets.WORKFLOW_APPROVAL }}
         run: |
           RUN_ID="${{ github.event.client_payload.run_id }}"
+          echo "Approving run $RUN_ID..."
 
           gh api \
             -X POST \
